@@ -37,10 +37,10 @@ float get_D2(const xAOD::Jet* j) {
   if (ECF2 == 0) {
     return 0;
   }
-
+  float ECF1 = j->auxdata<float>("ECF1");
   float ECF3 = j->auxdata<float>("ECF3");
 
-  return ECF3 / (ECF2 * ECF2 * ECF2);
+  return (ECF3 * ECF1*ECF1*ECF1)/(ECF2 *ECF2 * ECF2);
 }
 
 /*
