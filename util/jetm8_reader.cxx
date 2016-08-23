@@ -18,7 +18,7 @@ using namespace std;
  * Function to compare the pT of xAOD particle objects; useful for sorting.
  */
 bool pt_compare(const xAOD::IParticle* p1, const xAOD::IParticle* p2){
-  return p1->pt() >p2->pt();
+  return p1->pt() > p2->pt();
 }
 
 float get_tau21(const xAOD::Jet* j) {
@@ -58,35 +58,39 @@ void process_event(xAOD::TEvent* evt, OutputTree* output_tree) {
 
   auto jet10 = CopyRetrieve<xAOD::Jet>(evt,"AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets");
   sort(jet10.begin(),jet10.end(),pt_compare);
+
   output_tree->add_jets("fjet",jet10);
 
+  vector<float> fatjet_tau21;
+  vector<float> fatjet_D2;
+  for (auto j : jet10) {
+    fatjet_tau21.push_back(get_tau21(j));
+    fatjet_D2.push_back(get_D2(j));
+  }
+  output_tree->add_vector("fjet_tau21", fatjet_tau21);
+  output_tree->add_vector("fjet_D2", fatjet_D2);
 
-  //j3
+
   if (jet10.size()<2){
     cout<<"Event skipped, less than 2 AKT10 jets."<<endl;
     return;
   }
 
 
-  // calculate tau21 for the leading/subleading Akt10 jets
-  float j100_tau21 = get_tau21(jet10[0]);
-  float j101_tau21 = get_tau21(jet10[1]);
-
-
   // sort the leading/subleading Akt10 jets in order of
   // their tau21 value
   vector<const xAOD::Jet* > jet10_tau;
-  if (j100_tau21 < j101_tau21) {
+  if (fatjet_tau21[0] < fatjet_tau21[1]) {
     jet10_tau.push_back(jet10[0]);
     jet10_tau.push_back(jet10[1]);
-    output_tree->add_vector("fjetTau_tau21", {j100_tau21, j101_tau21});
-    output_tree->add_vector("fjetTau_D2", {get_D2(jet10[0]), get_D2(jet10[1])});
+    output_tree->add_vector("fjetTau_tau21", {fatjet_tau21[0], fatjet_tau21[1]});
+    output_tree->add_vector("fjetTau_D2", {fatjet_D2[0], fatjet_D2[1]});
   }
   else {
     jet10_tau.push_back(jet10[1]);
     jet10_tau.push_back(jet10[0]);
-    output_tree->add_vector("fjetTau_tau21", {j101_tau21, j100_tau21});
-    output_tree->add_vector("fjetTau_D2", {get_D2(jet10[1]), get_D2(jet10[0])});
+    output_tree->add_vector("fjetTau_tau21", {fatjet_tau21[1], fatjet_tau21[0]});
+    output_tree->add_vector("fjetTau_D2", {fatjet_D2[1], fatjet_D2[0]});
   }
   // write the tau21-sorted jets to the tree
   output_tree->add_jets("fjetTau", jet10_tau);
