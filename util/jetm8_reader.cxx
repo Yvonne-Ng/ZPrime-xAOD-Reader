@@ -3,8 +3,10 @@
 #include "xAODRootAccess/TEvent.h"
 #include "xAODJet/JetContainer.h"
 #include "xAODEventInfo/EventInfo.h"
+#include "xAODCutFlow/CutBookkeeperContainer.h"
 #include "TFile.h"
 #include "TTree.h"
+#include "TH1F.h"
 #include "TLorentzVector.h"
 #include <math.h>
 #include <cmath>
@@ -41,6 +43,21 @@ float get_D2(const xAOD::Jet* j) {
   float ECF3 = j->auxdata<float>("ECF3");
 
   return (ECF3 * ECF1*ECF1*ECF1)/(ECF2 *ECF2 * ECF2);
+}
+
+pair<float, float> get_event_counts(xAOD::TEvent* evt) {
+  const xAOD::CutBookkeeperContainer* cuts(nullptr);
+  evt->retrieveMetaInput(cuts, "CutBookkeepers");
+  float nevt_total = -1;
+  float nevt_total_wt = -1;
+  for (auto cb : *cuts) {
+    if (cb->inputStream() != "StreamDAOD_JETM8") continue;
+    if (cb->name() != "AllExecutedEvents") continue;
+    nevt_total = cb->nAcceptedEvents();
+    nevt_total_wt = cb->sumOfEventWeights();
+  }
+
+  return make_pair(nevt_total, nevt_total_wt);
 }
 
 /*
@@ -157,12 +174,28 @@ int main(int argc, char** argv){
   output_file->cd();
   OutputTree *output_tree= new OutputTree("zpj");
 
+  TH1F* h_nevt_total = new TH1F("nevt_total", "nevt_total", 1, 0, 1);
+    TH1F* h_nevt_total_wt = new TH1F("nevt_total_wt", "nevt_total_wt", 1, 0, 1);
+
   xAOD::TEvent* evt= new xAOD::TEvent();
 
   for (string filename : input_filenames) {
     TFile *input_file = TFile::Open(filename.c_str());
 
     evt->readFrom(input_file);
+
+    float nevt_total, nevt_total_wt;
+    tie(nevt_total, nevt_total_wt) = get_event_counts(evt);
+
+    if ( (nevt_total<0) || (nevt_total_wt<0) ) {
+        cerr << "Invalid event counts found!!! Skipping file." << endl;
+        continue;
+    }
+
+    h_nevt_total->Fill(0., nevt_total);
+    h_nevt_total_wt->Fill(0., nevt_total_wt);
+    cout << "Total events:    " << nevt_total << endl;
+    cout << "Weighted events: " << nevt_total_wt << endl;
 
     int nevt = evt->getEntries();
     std::cout<<"There are "<<nevt <<" event in this jetm8 file." << std::endl;
@@ -182,6 +215,8 @@ int main(int argc, char** argv){
 
   output_file->cd();
   output_tree->Write();
+  h_nevt_total->Write();
+  h_nevt_total_wt->Write();
   output_file->Close();
 
   return 0;
