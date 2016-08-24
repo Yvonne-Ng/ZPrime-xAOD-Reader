@@ -48,16 +48,32 @@ float get_D2(const xAOD::Jet* j) {
 pair<float, float> get_event_counts(xAOD::TEvent* evt) {
   const xAOD::CutBookkeeperContainer* cuts(nullptr);
   evt->retrieveMetaInput(cuts, "CutBookkeepers");
-  float nevt_total = -1;
-  float nevt_total_wt = -1;
+
+  map<int, vector<const xAOD::CutBookkeeper*> > cycles;
   for (auto cb : *cuts) {
-    if (cb->inputStream() != "StreamDAOD_JETM8") continue;
-    if (cb->name() != "AllExecutedEvents") continue;
-    nevt_total = cb->nAcceptedEvents();
-    nevt_total_wt = cb->sumOfEventWeights();
+      cycles[cb->cycle()].push_back(cb);
   }
 
-  return make_pair(nevt_total, nevt_total_wt);
+  for (auto c : cycles) {
+      float nevt, nevt_wt;
+      auto cbks = c.second;
+      if (cbks.size() < 2) continue;
+      bool goes_to_jetm8 = false;
+      for (auto cb : cbks) {
+          auto outputs = cb->outputStreams();
+          goes_to_jetm8 = ( find(begin(outputs), end(outputs), "StreamDAOD_JETM8") != end(outputs) );
+          if (cb->name() == "AllExecutedEvents") {
+              nevt = cb->nAcceptedEvents();
+              nevt_wt = cb->sumOfEventWeights();
+          }
+      }
+      if (goes_to_jetm8) {
+          cout << "Found AOD stream to JETM8 in cycle " << c.first << endl;
+          return make_pair(nevt, nevt_wt);
+      }
+  }
+
+  return make_pair(0., 0.);
 }
 
 /*
@@ -201,11 +217,11 @@ int main(int argc, char** argv){
     cout << "Weighted events: " << nevt_total_wt << endl;
 
     int nevt = evt->getEntries();
-    std::cout<<"There are "<<nevt <<" event in this jetm8 file." << std::endl;
+    std::cout<<"There are "<< nevt <<" event in this jetm8 file." << std::endl;
 
     for (int ievt=0; ievt<nevt; ++ievt){
-      std::cout<<"==================Event: "<<ievt<<"=================="<<std::endl;
-      std::cout<<std::endl;
+      //std::cout<<"==================Event: "<<ievt<<"=================="<<std::endl;
+      //std::cout<<std::endl;
 
       evt->getEntry(ievt);
       output_tree->clear();
