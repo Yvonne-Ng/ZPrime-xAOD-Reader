@@ -69,6 +69,9 @@ void process_event(xAOD::TEvent* evt, OutputTree* output_tree) {
   const xAOD::EventInfo* evt_info(nullptr);
   evt->retrieve(evt_info,"EventInfo");
 
+  float event_weight = evt_info->mcEventWeight();
+  output_tree->add_scalar("event_weight", event_weight);
+
   auto jet4 = CopyRetrieve<xAOD::Jet>(evt,"AntiKt4LCTopoJets");
   sort(jet4.begin(), jet4.end(), pt_compare);
   output_tree->add_jets("jet",jet4);
