@@ -155,9 +155,38 @@ void process_event(xAOD::TEvent* evt, OutputTree* output_tree) {
   output_tree->Fill();
 }
 
+pair<vector<string>, string> parse_file_list(int argc, char** argv) {
+  vector<string> input_filenames;
+
+  // load in the list of input files
+  string firstfile = argv[1];
+  if (firstfile.find(",") != string::npos) {
+    // if the first argument contains commas, split it up and treat
+    // it as a list of files
+    size_t pos = 0;
+    while ( (pos = firstfile.find(",")) != string::npos) {
+      input_filenames.push_back(firstfile.substr(0, pos));
+      firstfile.erase(0, pos + 1);
+    }
+    if (firstfile.size() > 0) {
+      input_filenames.push_back(firstfile);
+    }
+  }
+  else {
+    // otherwise, read the input files off the command line
+    for (int i = 1; i < (argc-1); ++i) {
+      input_filenames.push_back(argv[i]);
+    }
+  }
+  // in any case, assume the last argument is the output filename.
+  string output_filename = argv[argc-1];
+
+  return make_pair(input_filenames, output_filename);
+}
 
 void usage(int /*argc*/, char** argv) {
-  cout << "Usage: " << argv[0] << " input_file [input_file, ...] output_file" << endl;
+  cout << "Usage: " << argv[0] << " input_file [input_file ...] output_file" << endl;
+  cout << "       " << argv[0] << " input_file[,input_file,...] output_file" << endl;
 }
 
 int main(int argc, char** argv){
@@ -172,19 +201,22 @@ int main(int argc, char** argv){
     return 0;
   }
 
+  // load up the input and output file names
   vector<string> input_filenames;
-  cout << "Input files: " << endl;
-  for (int iarg = 1; iarg < (argc-1); ++iarg) {
-    input_filenames.push_back(argv[iarg]);
-    cout << "  " << argv[iarg] << endl;
-  }
+  string output_filename;
+  tie(input_filenames, output_filename) = parse_file_list(argc, argv);
 
-  string output_filename = argv[argc-1];
+  cout << "Input files: " << endl;
+  for (auto fn : input_filenames) {
+      cout << "  " << fn << endl;
+  }
   cout << "Output file: " << endl;
   cout << "  " << output_filename << endl;
 
+  // initialize xAOD framework
   xAOD::Init();
 
+  // open up our output file (or throw a fit if it already exists)
   TFile* output_file = new TFile(output_filename.c_str(), "create");
   if (not output_file->IsOpen()) {
     cerr << "Could not open output file! Abort." << endl;
