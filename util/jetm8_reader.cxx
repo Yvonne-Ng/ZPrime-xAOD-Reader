@@ -13,6 +13,7 @@
 #include "OutputTree/OutputTree.h"
 #include "ZprimexAOD/Retrieve.h"
 #include <algorithm>
+#include <utility>
 
 using namespace std;
 
@@ -22,7 +23,18 @@ using namespace std;
 bool pt_compare(const xAOD::IParticle* p1, const xAOD::IParticle* p2){
   return p1->pt() > p2->pt();
 }
-
+/*
+bool deltaR_compare(const xAOD::IParticle* p1, const xAOD::IParticle* p2, const xAOD::IParticle* pStar, int i){
+  pStar= ut_jet.at(i);
+  return pStar->p4().DeltaR(p1->p4())< pStar->p4().DeltaR(p2->p4());
+}
+*/
+/*
+bool deltaR_compare(const xAOD::IParticle* p1, const xAOD::IParticle* p2, const xAOD::IParticle* pStar, int i){
+  pStar= ut_jet.at(i);
+  return pStar->p4().DeltaR(p1->p4())< pStar->p4().DeltaR(p2->p4());
+}
+*/
 float get_tau21(const xAOD::Jet* j) {
   float tau1 = j->auxdata<float>("Tau1_wta");
   if (tau1 == 0) {
@@ -82,6 +94,9 @@ pair<float, float> get_event_counts(xAOD::TEvent* evt) {
  * Assumes the TEvent is already pointing at the event of interest.
  */
 void process_event(xAOD::TEvent* evt, OutputTree* output_tree) {
+
+  cout<<"check1"<<endl;
+
   const xAOD::EventInfo* evt_info(nullptr);
   evt->retrieve(evt_info,"EventInfo");
 
@@ -94,8 +109,8 @@ void process_event(xAOD::TEvent* evt, OutputTree* output_tree) {
 
   auto jet10 = CopyRetrieve<xAOD::Jet>(evt,"AntiKt10LCTopoTrimmedPtFrac5SmallR20Jets");
   sort(jet10.begin(),jet10.end(),pt_compare);
-
   output_tree->add_jets("fjet",jet10);
+
 
   vector<float> fatjet_tau21;
   vector<float> fatjet_D2;
@@ -106,13 +121,109 @@ void process_event(xAOD::TEvent* evt, OutputTree* output_tree) {
   output_tree->add_vector("fjet_tau21", fatjet_tau21);
   output_tree->add_vector("fjet_D2", fatjet_D2);
 
-
   if (jet10.size()<2){
     cout<<"Event skipped, less than 2 AKT10 jets."<<endl;
     return;
   }
 
+ //Retrieve and sort and add ut_fjet10
+  auto ut_jet10 = CopyRetrieve<xAOD::Jet>(evt,"AntiKt10LCTopoJets");
+  sort(ut_jet10.begin(), ut_jet10.end(), pt_compare);
+  output_tree->add_jets("ut_fjet10",ut_jet10);
 
+
+  //Kill the program if ut_jet size doesn't match that of jet10 in an event.
+  if (ut_jet10.size()!=jet10.size()){
+      cout<<"Unmatched event number between jet10 and untrimmed jet10!"<<endl;
+      return;
+    }
+
+cout<<"Check2"<<endl;
+ // xAOD::Jet jet10;
+ // jet10.makePrivateStore();
+  //jet.setJetP4(xAOD::JetFourMom_t(1,1,0,3));
+
+  // using jet to find asso_candidate
+//    xAOD::Jet* asso_candidate = new xAOD::Jet();
+//    ut_jet10[0]->makePrivateStore(asso_candidate);
+/*
+  auto Asso_ut_jet10 = CopyRetrieve<xAOD::Jet>(evt,"AntiKt10LCTopoJets");
+  sort(Asso_ut_jet10.begin(), Asso_ut_jet10.end(), pt_compare);
+  sort(Asso_ut_jet10.begin(), Asso_ut_jet10.end(), deltaR_compare);
+  output_tree->add_jets("ut_fjet10",ut_jet10);
+  sort(ut_jet10.begin(),ut_jet10.end(),deltaR_compare);
+    */
+
+    vector<int> assoInd;
+    for (int i=0; i<jet10.size(); i++){
+      vector<pair<double,int> > deltaR_ind;
+      for (int j=0; j<ut_jet10.size(); j++){
+        if (i==j){
+          continue; //avoid comparing deltaR with the jet itself
+        }
+        else{
+          double deltaR=jet10.at(i)->p4().DeltaR(ut_jet10.at(j)->p4());
+          deltaR_ind.emplace_back(deltaR,j);
+        }
+        sort(deltaR_ind.begin(),deltaR_ind.end());
+        //Create an vector of associate index
+        assoInd.push_back(deltaR_ind.at(0).second);
+      }
+    }
+
+cout<<"Check3"<<endl;
+    //Find the vector of the associated jets
+    /*
+ for (auto j : jet10){
+  for (auto asso_j: ut_jet10){
+    if (j->p4().DeltaR(asso_j->p4())< j->p4().DeltaR(asso_candidate_p4)){
+
+     asso_j->makePrivateStore(asso_candidate); //using jet
+     asso_candidate_p4=asso_j->p4();
+
+     asso_candidate= &asso_j;
+  }
+    ut_asso_fjet10.push_back(*asso_candidate); //using jet
+    ut_asso_fjet10_p4.push_back(asso_candidate_p4);
+ }
+
+*/
+//need to still remove the overlapping candidates.
+
+
+//finding the variable for the asso jets
+  vector<float> ut_asso_fatjet_tau21;
+  vector<float> ut_asso_fatjet_D2;
+  vector<float> ut_asso_fatjet_pt;
+  vector<float> ut_asso_fatjet_m;
+  for (auto i : assoInd){
+    ut_asso_fatjet_tau21.push_back(get_tau21(ut_jet10.at(i)));
+    ut_asso_fatjet_D2.push_back(get_D2(ut_jet10.at(i)));
+    ut_asso_fatjet_pt.push_back(ut_jet10.at(i)->p4().Pt());
+    ut_asso_fatjet_m.push_back(ut_jet10.at(i)->p4().M());
+  }
+
+  output_tree->add_vector("ut_asso_fjet_tau21", ut_asso_fatjet_tau21);
+  output_tree->add_vector("ut_asso_fjet_D2",ut_asso_fatjet_D2);
+  output_tree->add_vector("ut_asso_fjet_pt", ut_asso_fatjet_tau21);
+  output_tree->add_vector("ut_asso_fjet_m",ut_asso_fatjet_m);
+
+//***********************Edit later**************************//
+/*
+  vector<float> rhoPrime;
+  vector<float> ut_tau21;
+
+  for (auto i: assoInd){
+      fatjet_tau21.push_back(get_tau21(j));
+      rp=fjet
+      rhoPrime.push_back()
+  }
+ // vector<float
+*/
+
+cout<<"check4"<<endl;
+
+ // outputtree->add_vector("rho",log(
   // sort the leading/subleading Akt10 jets in order of
   // their tau21 value
   vector<const xAOD::Jet* > jet10_tau;
@@ -131,7 +242,7 @@ void process_event(xAOD::TEvent* evt, OutputTree* output_tree) {
   // write the tau21-sorted jets to the tree
   output_tree->add_jets("fjetTau", jet10_tau);
 
-
+cout<<"check5"<<endl;
   // find small-radius jets that are not overlapping with the
   // candidate antikt10 jets
   std::vector<const xAOD::Jet* > jet4_nonoverlap;
@@ -166,6 +277,8 @@ pair<vector<string>, string> parse_file_list(int argc, char** argv) {
     size_t pos = 0;
     while ( (pos = firstfile.find(",")) != string::npos) {
       input_filenames.push_back(firstfile.substr(0, pos));
+      cout<<"check6"<<endl;
+
       firstfile.erase(0, pos + 1);
     }
     if (firstfile.size() > 0) {
@@ -182,6 +295,8 @@ pair<vector<string>, string> parse_file_list(int argc, char** argv) {
   string output_filename = argv[argc-1];
 
   return make_pair(input_filenames, output_filename);
+  cout<<"check7"<<endl;
+
 }
 
 void usage(int /*argc*/, char** argv) {
@@ -195,7 +310,6 @@ int main(int argc, char** argv){
     usage(argc, argv);
     return 1;
   }
-
   if (string(argv[1]) == "-h" || string(argv[1]) == "--help") {
     usage(argc, argv);
     return 0;
@@ -215,6 +329,7 @@ int main(int argc, char** argv){
 
   // initialize xAOD framework
   xAOD::Init();
+  cout<<"check main 1"<<endl;
 
   // open up our output file (or throw a fit if it already exists)
   TFile* output_file = new TFile(output_filename.c_str(), "create");
@@ -222,31 +337,48 @@ int main(int argc, char** argv){
     cerr << "Could not open output file! Abort." << endl;
     return 1;
   }
+  cout<<"check main 2"<<endl;
+
   output_file->cd();
   OutputTree *output_tree= new OutputTree("zpj");
+
+  cout<<"check main 3"<<endl;
 
   TH1F* h_nevt_total = new TH1F("nevt_total", "nevt_total", 1, 0, 1);
     TH1F* h_nevt_total_wt = new TH1F("nevt_total_wt", "nevt_total_wt", 1, 0, 1);
 
   xAOD::TEvent* evt= new xAOD::TEvent();
 
+  cout<<"check main 4"<<endl;
+
   for (string filename : input_filenames) {
+    cout<<"Check main 4.1.1"<<endl;
     TFile *input_file = TFile::Open(filename.c_str());
+
+    cout<<"check main 4.1"<<endl;
 
     evt->readFrom(input_file);
 
+    cout<<"check main 4.2"<<endl;
+
     float nevt_total, nevt_total_wt;
     tie(nevt_total, nevt_total_wt) = get_event_counts(evt);
+
+    cout<<"check main 4.3"<<endl;
 
     if ( (nevt_total<0) || (nevt_total_wt<0) ) {
         cerr << "Invalid event counts found!!! Skipping file." << endl;
         continue;
     }
 
+    cout<<"check main 5"<<endl;
+
     h_nevt_total->Fill(0., nevt_total);
     h_nevt_total_wt->Fill(0., nevt_total_wt);
     cout << "Total events:    " << nevt_total << endl;
     cout << "Weighted events: " << nevt_total_wt << endl;
+
+    cout<<"check main 6"<<endl;
 
     int nevt = evt->getEntries();
     std::cout<<"There are "<< nevt <<" event in this jetm8 file." << std::endl;
@@ -260,6 +392,7 @@ int main(int argc, char** argv){
 
       process_event(evt, output_tree);
     }
+    cout<<"check main 7"<<endl;
 
     input_file->Close();
   }
