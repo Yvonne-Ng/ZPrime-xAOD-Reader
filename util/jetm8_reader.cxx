@@ -139,20 +139,29 @@ void process_event(xAOD::TEvent* evt, OutputTree* output_tree) {
     }
 
 cout<<"Check2"<<endl;
- // xAOD::Jet jet10;
- // jet10.makePrivateStore();
-  //jet.setJetP4(xAOD::JetFourMom_t(1,1,0,3));
 
-  // using jet to find asso_candidate
-//    xAOD::Jet* asso_candidate = new xAOD::Jet();
-//    ut_jet10[0]->makePrivateStore(asso_candidate);
-/*
-  auto Asso_ut_jet10 = CopyRetrieve<xAOD::Jet>(evt,"AntiKt10LCTopoJets");
-  sort(Asso_ut_jet10.begin(), Asso_ut_jet10.end(), pt_compare);
-  sort(Asso_ut_jet10.begin(), Asso_ut_jet10.end(), deltaR_compare);
-  output_tree->add_jets("ut_fjet10",ut_jet10);
-  sort(ut_jet10.begin(),ut_jet10.end(),deltaR_compare);
-    */
+//Adding in the additional CMS trigger requirements   //Need to move this to before the tree items are written in. 
+double HT;
+double largestPT=0.;
+double largestTrimmedMass=0.;
+for (int i ; i < jet10.size(); i++){
+	HT = HT+jet10.at(i)->p4().Pt();
+	if (largestPT < jet10.at(i)->p4().Pt()){
+		largestPT = jet10.at(i)->p4().Pt();
+	}	
+	if (largestTrimmedMass < ut_jet10.at(i)->p4().M()){
+		largestTrimmedMass = ut_jet10.at(i)->p4().M();
+	}
+
+}
+if (((HT>650e3) && (largestTrimmedMass>50e3)) || ((largestPT >350e3) && (largestTrimmedMass > 30e3)) || (HT > 800e3)){
+	cout<<"Event passes the CMS trigger"<<endl;
+
+}
+else{
+	cout<<"Event does not pass the CMS Trigger"<<endl;
+return;
+}
 
     vector<int> assoInd;
     for (int i=0; i<jet10.size(); i++){
@@ -172,22 +181,7 @@ cout<<"Check2"<<endl;
     }
 
 cout<<"Check3"<<endl;
-    //Find the vector of the associated jets
-    /*
- for (auto j : jet10){
-  for (auto asso_j: ut_jet10){
-    if (j->p4().DeltaR(asso_j->p4())< j->p4().DeltaR(asso_candidate_p4)){
 
-     asso_j->makePrivateStore(asso_candidate); //using jet
-     asso_candidate_p4=asso_j->p4();
-
-     asso_candidate= &asso_j;
-  }
-    ut_asso_fjet10.push_back(*asso_candidate); //using jet
-    ut_asso_fjet10_p4.push_back(asso_candidate_p4);
- }
-
-*/
 //need to still remove the overlapping candidates.
 
 
@@ -207,6 +201,12 @@ cout<<"Check3"<<endl;
   output_tree->add_vector("ut_asso_fjet_D2",ut_asso_fatjet_D2);
   output_tree->add_vector("ut_asso_fjet_pt", ut_asso_fatjet_tau21);
   output_tree->add_vector("ut_asso_fjet_m",ut_asso_fatjet_m);
+
+
+
+
+
+
 
 //***********************Edit later**************************//
 /*
