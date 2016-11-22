@@ -167,10 +167,8 @@ return;
     for (int i=0; i<jet10.size(); i++){
       vector<pair<double,int> > deltaR_ind;
       for (int j=0; j<ut_jet10.size(); j++){
-        if (i==j){
-          continue; //avoid comparing deltaR with the jet itself
-        }
-        else{
+
+        
           double deltaR=jet10.at(i)->p4().DeltaR(ut_jet10.at(j)->p4());
           deltaR_ind.emplace_back(deltaR,j);
         }
@@ -178,34 +176,34 @@ return;
         //Create an vector of associate index
         assoInd.push_back(deltaR_ind.at(0).second);
       }
-    }
+    
 
-cout<<"Check3"<<endl;
+//cout<<"Check3"<<endl;
 
 //need to still remove the overlapping candidates.
 
 
 //finding the variable for the asso jets
-  vector<float> ut_asso_fatjet_tau21;
-  vector<float> ut_asso_fatjet_D2;
-  vector<float> ut_asso_fatjet_pt;
-  vector<float> ut_asso_fatjet_m;
-  for (auto i : assoInd){
-    ut_asso_fatjet_tau21.push_back(get_tau21(ut_jet10.at(i)));
-    ut_asso_fatjet_D2.push_back(get_D2(ut_jet10.at(i)));
-    ut_asso_fatjet_pt.push_back(ut_jet10.at(i)->p4().Pt());
-    ut_asso_fatjet_m.push_back(ut_jet10.at(i)->p4().M());
-  }
+ 	 vector<float> ut_asso_fatjet_tau21;
+ 	 vector<float> ut_asso_fatjet_D2;
+	  vector<float> ut_asso_fatjet_pt;
+	  vector<float> ut_asso_fatjet_m;
+	  for (auto i : assoInd){
+	    ut_asso_fatjet_tau21.push_back(get_tau21(ut_jet10.at(i)));
+	    ut_asso_fatjet_D2.push_back(get_D2(ut_jet10.at(i)));
+	    ut_asso_fatjet_pt.push_back(ut_jet10.at(i)->p4().Pt());
+	    ut_asso_fatjet_m.push_back(ut_jet10.at(i)->p4().M());
+	  }
 
-  output_tree->add_vector("ut_asso_fjet_tau21", ut_asso_fatjet_tau21);
-  output_tree->add_vector("ut_asso_fjet_D2",ut_asso_fatjet_D2);
-  output_tree->add_vector("ut_asso_fjet_pt", ut_asso_fatjet_tau21);
-  output_tree->add_vector("ut_asso_fjet_m",ut_asso_fatjet_m);
-
-
+	  output_tree->add_vector("ut_asso_fjet_tau21", ut_asso_fatjet_tau21);
+	  output_tree->add_vector("ut_asso_fjet_D2",ut_asso_fatjet_D2);
+	  output_tree->add_vector("ut_asso_fjet_pt", ut_asso_fatjet_tau21);
+	  output_tree->add_vector("ut_asso_fjet_m",ut_asso_fatjet_m);
 
 
 
+
+	  
 
 
 //***********************Edit later**************************//
@@ -297,8 +295,8 @@ pair<vector<string>, string> parse_file_list(int argc, char** argv) {
   return make_pair(input_filenames, output_filename);
   cout<<"check7"<<endl;
 
-}
 
+}
 void usage(int /*argc*/, char** argv) {
   cout << "Usage: " << argv[0] << " input_file [input_file ...] output_file" << endl;
   cout << "       " << argv[0] << " input_file[,input_file,...] output_file" << endl;
