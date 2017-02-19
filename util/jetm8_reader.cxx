@@ -184,8 +184,9 @@ return;
 
 
 //finding the variable for the asso jets
- 	 vector<float> ut_asso_fatjet_tau21;
- 	 vector<float> ut_asso_fatjet_D2;
+ 	  vector<float> ut_asso_fatjet_Jvt;
+	  vector<float> ut_asso_fatjet_tau21;
+ 	  vector<float> ut_asso_fatjet_D2;
 	  vector<float> ut_asso_fatjet_pt;
 	  vector<float> ut_asso_fatjet_m;
 	  for (auto i : assoInd){
@@ -193,12 +194,14 @@ return;
 	    ut_asso_fatjet_D2.push_back(get_D2(ut_jet10.at(i)));
 	    ut_asso_fatjet_pt.push_back(ut_jet10.at(i)->p4().Pt());
 	    ut_asso_fatjet_m.push_back(ut_jet10.at(i)->p4().M());
+	    ut_asso_fatjet_Jvt.push_back(ut_jet10.at(i)->auxdata<float>("Jvt"));
 	  }
 
 	  output_tree->add_vector("ut_asso_fjet_tau21", ut_asso_fatjet_tau21);
 	  output_tree->add_vector("ut_asso_fjet_D2",ut_asso_fatjet_D2);
 	  output_tree->add_vector("ut_asso_fjet_pt", ut_asso_fatjet_tau21);
 	  output_tree->add_vector("ut_asso_fjet_m",ut_asso_fatjet_m);
+	  output_tree->add_vector("ut_asso_fjet_Jvt", ut_asso_fatjet_Jvt);
 
 
 

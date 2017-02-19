@@ -48,22 +48,35 @@ if __name__ == "__main__":
     t = f.Get("zpj")
     n_entries = t.GetEntries()
 
-    if 'lumi_weight' in [b.GetName() for b in t.GetListOfBranches()]:
+
+
+    '''if 'lumi_weight' in [b.GetName() for b in t.GetListOfBranches()]:
         print "Error! lumi_weight branch already exists in this file!"
         sys.exit(1)
-
+    '''
     # disable other branches, for speed. we don't need to look at them anyways
     t.SetBranchStatus("*", 0)
 
     lumi_wt = np.array( 1.*xs*filt_eff/nevt)
+    print lumi_wt
     nevt = np.array( 1.*nevt, dtype=np.int32 )
     nevt_wt = np.array( 1.*nevt_wt )
     mcid = np.array(1.*dsid, dtype=np.int32)
+
+    '''print "reset before"
+    t.ResetBranchAddress("lumi_weight")
+    print "reset after"    
+    '''
+    b1=t.GetBranch("lumi_weight")
+    t.ResetBranchAddress(b1)
+
+
     b1 = t.Branch("lumi_weight", lumi_wt, 'lumi_weight/D')
     b2 = t.Branch("nevt", nevt, 'nevt/I')
     b3 = t.Branch("nevt_wt", nevt_wt, 'nevt_wt/D')
     b4 = t.Branch("mcid", mcid, 'mcid/I')
-
+    
+    
     for i in xrange(n_entries):
         b1.Fill()
         b2.Fill()
