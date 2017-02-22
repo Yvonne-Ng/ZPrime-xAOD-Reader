@@ -14,6 +14,11 @@
 #include "ZprimexAOD/Retrieve.h"
 #include <algorithm>
 #include <utility>
+#include <LHAPDF/LHAPDF.h>
+#include "LHAPDF/Reweighting.h"
+#include "xAODTruth/TruthEvent.h"
+#include "xAODTruth/versions/TruthEvent_v1.h"
+
 
 using namespace std;
 
@@ -93,12 +98,17 @@ pair<float, float> get_event_counts(xAOD::TEvent* evt) {
  * the result is written to the given OutputTree.
  * Assumes the TEvent is already pointing at the event of interest.
  */
-void process_event(xAOD::TEvent* evt, OutputTree* output_tree) {
+void process_event(xAOD::TEvent* evt, OutputTree* output_tree, LHAPDF::PDF* p0, LHAPDF::PDF* p1, LHAPDF::PDF* p2) {
 
   cout<<"check1"<<endl;
 
   const xAOD::EventInfo* evt_info(nullptr);
   evt->retrieve(evt_info,"EventInfo");
+
+  //const xAOD::TruthEvent_v1::PdfInfo *pdf_info;
+  //evt->retrieve(pdf_info, "PdfInfo");
+
+  const xAOD::TruthEvent_v1::PdfInfo *pdf_info=&xAOD::TruthEvent_v1::pdfInfo();
 
   float event_weight = evt_info->mcEventWeight();
   output_tree->add_scalar("event_weight", event_weight);
@@ -264,6 +274,14 @@ cout<<"check5"<<endl;
   output_tree->add_jets("jetNOleading", jet4_nonoverlap);
   output_tree->add_jets("jetNOtau", jet4_nonoverlap_tau);
 
+ //pdf weight calculation 
+  
+  double pdfwVsCt4 = LHAPDF::weightxxQ2(pdf_info->pdgId1, pdf_info->pdgId2, pdf_info->x1, pdf_info->x2, pdf_info->Q, p0, p1);
+  double pdfwVsMMHT = LHAPDF::weightxxQ2(pdf_info->pdgId1, pdf_info->pdgId2, pdf_info->x1, pdf_info->x2, pdf_info->Q, p0, p2);
+ 
+
+  output_tree->add_scalar("pdfweightVS_Ct4", pdfwVsCt4);
+  output_tree->add_scalar("pdfweightVS_MMHT", pdfwVsMMHT);
   output_tree->Fill();
 }
 
@@ -333,7 +351,7 @@ int main(int argc, char** argv){
   cout<<"check main 1"<<endl;
 
   // open up our output file (or throw a fit if it already exists)
-  TFile* output_file = new TFile(output_filename.c_str(), "create");
+  TFile* output_file = new TFile(output_filename.c_str(), "RECREATE");
   if (not output_file->IsOpen()) {
     cerr << "Could not open output file! Abort." << endl;
     return 1;
@@ -384,14 +402,20 @@ int main(int argc, char** argv){
     int nevt = evt->getEntries();
     std::cout<<"There are "<< nevt <<" event in this jetm8 file." << std::endl;
 
+//adding the lha library
+    LHAPDF::PDF* p0 = LHAPDF::mkPDF("NNPDF30_lo_as_0130/0");
+    LHAPDF::PDF* p1 = LHAPDF::mkPDF("CT14lo/0");
+    LHAPDF::PDF* p2 = LHAPDF::mkPDF("MMHT2014lo68cl/0"); 
+//Event loop
     for (int ievt=0; ievt<nevt; ++ievt){
       //std::cout<<"==================Event: "<<ievt<<"=================="<<std::endl;
       //std::cout<<std::endl;
 
+
       evt->getEntry(ievt);
       output_tree->clear();
 
-      process_event(evt, output_tree);
+      process_event(evt, output_tree,p0,p1,p2);
     }
     cout<<"check main 7"<<endl;
 
